@@ -56,7 +56,6 @@ def trajectory_for(initial: str, seq_text: str) -> List[Tuple[float, float, floa
     if not gates:
         return coords
 
-    build_circuit(gates, base=qc)
     # Recompute state after each prefix by replaying gates incrementally
     qc_inc = prepare_initial_state(initial)
     for name, ang in gates:
@@ -75,7 +74,7 @@ with left:
         fig = bloch_figure(list(xs), list(ys), list(zs), show_trail=True)
         st.plotly_chart(fig, use_container_width=True)
     except Exception as exc:
-        st.error(f"Parsing/Simulation error: {exc}")
+        st.error(f"Parsing/Simulation error: {exc}\nTry formats like Rx(pi/2), Rz(90deg), or Ry(-π/3).")
 
 with right:
     st.subheader("Final State Metrics")
@@ -93,5 +92,8 @@ with right:
         st.metric("θ (polar)", f"{theta:.3f} rad")
         st.metric("φ (azimuth)", f"{phi:.3f} rad")
         st.caption("θ = arccos(z), φ = atan2(y, x)")
+        if gates:
+            with st.popover("Parsed gates"):
+                st.write([f"{n}({ang:.6f})" if ang is not None else n for n, ang in gates])
     except Exception as exc:
         st.error(f"Metric computation error: {exc}")

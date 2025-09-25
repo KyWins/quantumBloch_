@@ -19,7 +19,7 @@ from utils.gate_utils import (
 
 def test_parse_gate_token_rotation():
     name, angle = parse_gate_token("Rx(pi/2)")
-    assert name == "Rx"
+    assert name == "RX"
     assert math.isclose(angle, math.pi / 2, rel_tol=1e-7)
 
 

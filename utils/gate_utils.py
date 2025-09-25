@@ -9,13 +9,13 @@ from qiskit import QuantumCircuit
 from qiskit.quantum_info import Statevector
 
 
-SUPPORTED_GATES = {"I", "X", "Y", "Z", "H", "Rx", "Ry", "Rz"}
+SUPPORTED_GATES = {"I", "X", "Y", "Z", "H", "S", "SDG", "T", "TDG", "RX", "RY", "RZ"}
 
 
 def parse_gate_token(token: str) -> Tuple[str, float | None]:
     """Parse a gate token like 'H', 'X', 'Rx(pi/2)', 'Rz(1.5708)'.
 
-    Returns (gate_name, angle_radians_or_None).
+    Returns (UPPERCASE gate_name, angle_radians_or_None).
     """
     token = token.strip()
     if "(" not in token:
@@ -25,10 +25,10 @@ def parse_gate_token(token: str) -> Tuple[str, float | None]:
         gate, arg = token.split("(", 1)
         arg = arg.rstrip(")").strip()
         angle = _parse_angle_to_radians(arg)
-    gate = gate.strip()
+    gate = gate.strip().upper()
     if gate not in SUPPORTED_GATES:
         raise ValueError(f"Unsupported gate: {gate}")
-    if gate in {"Rx", "Ry", "Rz"} and angle is None:
+    if gate in {"RX", "RY", "RZ"} and angle is None:
         raise ValueError(f"Rotation gate {gate} requires an angle, e.g., {gate}(pi/2)")
     return gate, angle
 
@@ -41,10 +41,8 @@ _GATE_RX = re.compile(r"^(rx|ry|rz)\((.+)\)$", re.IGNORECASE)
 def _parse_angle_to_radians(expr: str) -> float:
     """Parse expressions like 'pi', 'π/2', '2*pi/3', '1.234', '90deg', '-45deg'."""
     s = expr.strip()
-    # Normalize aliases for pi
     for name, value in _PI_ALIASES.items():
         s = re.sub(fr"(?i){name}", f"({value})", s)
-    # Support degree suffix
     s = s.replace(" ", "")
     if s.lower().endswith("deg"):
         core = s[:-3]
@@ -53,7 +51,6 @@ def _parse_angle_to_radians(expr: str) -> float:
         except ValueError as exc:
             raise ValueError(f"Invalid degree angle: {expr}") from exc
         return math.radians(degrees)
-    # Safe evaluation of arithmetic using math only
     try:
         return float(eval(s, {"__builtins__": {}}, {"math": math}))
     except Exception as exc:
@@ -63,11 +60,7 @@ def _parse_angle_to_radians(expr: str) -> float:
 # New parser that accepts a free-form sequence string -------------------------
 
 def parse_gate_sequence(seq: str) -> List[Tuple[str, Optional[float]]]:
-    """Parse a comma-separated sequence into normalized gate tuples.
-
-    Accepts whitespace variations, case-insensitive, supports Rx/Ry/Rz with
-    angles in radians, pi/π expressions, and degrees (suffix 'deg').
-    """
+    """Parse a comma-separated sequence into normalized (UPPERCASE gate, angle) tuples."""
     tokens = [t.strip() for t in seq.split(",") if t.strip()]
     result: List[Tuple[str, Optional[float]]] = []
     for token in tokens:
@@ -78,7 +71,7 @@ def parse_gate_sequence(seq: str) -> List[Tuple[str, Optional[float]]]:
             result.append((gate, float(angle)))
             continue
         up = token.upper()
-        if up in {"H", "X", "Y", "Z", "I"}:
+        if up in {"H", "X", "Y", "Z", "I", "S", "SDG", "T", "TDG"}:
             result.append((up, None))
         else:
             raise ValueError(f"Unrecognized gate token: '{token}'")
@@ -102,6 +95,14 @@ def build_circuit(gates: List[Tuple[str, Optional[float]]], base: QuantumCircuit
             qc.y(0)
         elif name == "Z":
             qc.z(0)
+        elif name == "S":
+            qc.s(0)
+        elif name == "SDG":
+            qc.sdg(0)
+        elif name == "T":
+            qc.t(0)
+        elif name == "TDG":
+            qc.tdg(0)
         elif name == "RX":
             qc.rx(float(angle), 0)  # type: ignore[arg-type]
         elif name == "RY":
@@ -148,22 +149,30 @@ def apply_gates(circuit: QuantumCircuit, gates: List[str]) -> QuantumCircuit:
             circuit.z(0)
         elif name == "H":
             circuit.h(0)
-        elif name == "Rx":
-            circuit.rx(angle, 0)
-        elif name == "Ry":
-            circuit.ry(angle, 0)
-        elif name == "Rz":
-            circuit.rz(angle, 0)
+        elif name == "RX":
+            circuit.rx(angle, 0)  # type: ignore[arg-type]
+        elif name == "RY":
+            circuit.ry(angle, 0)  # type: ignore[arg-type]
+        elif name == "RZ":
+            circuit.rz(angle, 0)  # type: ignore[arg-type]
+        elif name == "S":
+            circuit.s(0)
+        elif name == "SDG":
+            circuit.sdg(0)
+        elif name == "T":
+            circuit.t(0)
+        elif name == "TDG":
+            circuit.tdg(0)
         else:
             raise ValueError(f"Unsupported gate encountered: {name}")
     return circuit
 
 
 def statevector_after(circuit: QuantumCircuit) -> Statevector:
-    """Return the final statevector for a single-qubit circuit."""
+    """Return the final statevector for a single-qubit circuit, no simulator backend."""
     if circuit.num_qubits != 1:
         raise ValueError("statevector_after expects a single-qubit circuit")
-    return Statevector.from_instruction(circuit)
+    return Statevector.from_label("0").evolve(circuit)
 
 
 def bloch_coordinates(state: Statevector) -> Tuple[float, float, float]:
