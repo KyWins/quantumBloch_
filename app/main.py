@@ -3,90 +3,87 @@ from __future__ import annotations
 from typing import List, Tuple
 
 import streamlit as st
-from qiskit import QuantumCircuit
-import numpy as np
 
 from utils.gate_utils import (
-    apply_gates,
     parse_gate_sequence,
     build_circuit,
     statevector_after,
     state_to_bloch,
     cartesian_to_spherical,
+    prepare_initial_state,
 )
 from utils.plotly_bloch import bloch_figure
-from app.components import make_bloch_figure
 
 st.set_page_config(page_title="Bloch Sphere Visualizer", layout="wide")
 
 st.title("Bloch Sphere Visualizer")
 
 st.markdown(
-    "Type a comma-separated list of gates. Examples: `H`, `X`, `Rx(pi/2)`, `Rz(90deg)`, `H, Rz(π/2), H`."
+    "Enter a comma-separated list of gates. Examples: `H`, `X`, `Rx(pi/2)`, `Rz(90deg)`, `H, Rz(π/2), H`."
 )
 
-preset = st.radio("Presets", ["None", "|0⟩", "|+⟩", "|i⟩"], horizontal=True, key="preset")
+with st.expander("Examples"):
+    st.code("H", language="text")
+    st.code("H, Rz(pi/2), H", language="text")
+    st.code("Rx(pi/2), Ry(pi/3), Rz(-pi/4)", language="text")
+    st.caption("Angles accept `pi`, `π`, simple expressions like `pi/2`, and `deg` (e.g., `90deg`).")
+
+preset = st.radio("Initial state preset", ["|0⟩ (default)", "|+⟩", "|i⟩"], horizontal=True, key="preset")
 
 
-def _preset_sequence(name: str) -> str:
-    if name == "|0⟩":
-        return "I"
-    if name == "|+⟩":
-        return "H"
-    if name == "|i⟩":
-        return "H, Rz(π/2)"
-    return "H, Rz(pi/2), H"
+def _initial_preset_key(name: str) -> str:
+    if name.startswith("|+⟩"):
+        return "|+>"
+    if name.startswith("|i⟩"):
+        return "|i>"
+    return "|0>"
 
 
-default_sequence = _preset_sequence(preset)
-user_input = st.text_input("Gate sequence", default_sequence, key="seq")
+init_key = _initial_preset_key(preset)
+user_input = st.text_input("Gate sequence", value="", key="seq")
 
 
 @st.cache_data(show_spinner=False)
-def trajectory_for(seq_text: str) -> List[Tuple[float, float, float]]:
-    gates = parse_gate_sequence(seq_text)
+def trajectory_for(initial: str, seq_text: str) -> List[Tuple[float, float, float]]:
+    """Return Bloch (x,y,z) points including initial state, then after each gate."""
+    qc = prepare_initial_state(initial)
     coords: List[Tuple[float, float, float]] = []
-    qc_inc = build_circuit([])
+    # initial point
+    sv0 = statevector_after(qc)
+    coords.append(state_to_bloch(sv0))
+
+    gates = parse_gate_sequence(seq_text) if seq_text.strip() else []
+    if not gates:
+        return coords
+
+    build_circuit(gates, base=qc)
+    # Recompute state after each prefix by replaying gates incrementally
+    qc_inc = prepare_initial_state(initial)
     for name, ang in gates:
-        # Append one gate
-        if name == "I":
-            qc_inc.i(0)
-        elif name == "H":
-            qc_inc.h(0)
-        elif name == "X":
-            qc_inc.x(0)
-        elif name == "Y":
-            qc_inc.y(0)
-        elif name == "Z":
-            qc_inc.z(0)
-        elif name == "RX":
-            qc_inc.rx(float(ang), 0)  # type: ignore[arg-type]
-        elif name == "RY":
-            qc_inc.ry(float(ang), 0)  # type: ignore[arg-type]
-        elif name == "RZ":
-            qc_inc.rz(float(ang), 0)  # type: ignore[arg-type]
+        build_circuit([(name, ang)], base=qc_inc)
         sv = statevector_after(qc_inc)
         coords.append(state_to_bloch(sv))
     return coords
 
 
-sequence: List[str] = [t.strip() for t in user_input.split(",") if t.strip()]
 left, right = st.columns([2.5, 1])
 
 with left:
     try:
-        coords = trajectory_for(user_input)
+        coords = trajectory_for(init_key, user_input)
         xs, ys, zs = zip(*coords) if coords else ([], [], [])
         fig = bloch_figure(list(xs), list(ys), list(zs), show_trail=True)
         st.plotly_chart(fig, use_container_width=True)
     except Exception as exc:
-        st.error(str(exc))
+        st.error(f"Parsing/Simulation error: {exc}")
 
 with right:
     st.subheader("Final State Metrics")
     try:
-        gates = parse_gate_sequence(user_input)
-        qc = build_circuit(gates)
+        qc = prepare_initial_state(init_key)
+        gates = parse_gate_sequence(user_input) if user_input.strip() else []
+        if gates:
+            build_circuit(gates, base=qc)
         sv = statevector_after(qc)
         x, y, z = state_to_bloch(sv)
         theta, phi = cartesian_to_spherical(x, y, z)
@@ -97,4 +94,4 @@ with right:
         st.metric("φ (azimuth)", f"{phi:.3f} rad")
         st.caption("θ = arccos(z), φ = atan2(y, x)")
     except Exception as exc:
-        st.error(str(exc))
+        st.error(f"Metric computation error: {exc}")

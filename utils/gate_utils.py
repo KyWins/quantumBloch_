@@ -85,9 +85,12 @@ def parse_gate_sequence(seq: str) -> List[Tuple[str, Optional[float]]]:
     return result
 
 
-def build_circuit(gates: List[Tuple[str, Optional[float]]]) -> QuantumCircuit:
-    """Build a single-qubit circuit from parsed gate tuples."""
-    qc = QuantumCircuit(1)
+def build_circuit(gates: List[Tuple[str, Optional[float]]], base: QuantumCircuit | None = None) -> QuantumCircuit:
+    """Build a single-qubit circuit from parsed gate tuples.
+
+    If base is provided, append to it in-place and return it; otherwise create a new circuit.
+    """
+    qc = base if base is not None else QuantumCircuit(1)
     for name, angle in gates:
         if name == "I":
             qc.i(0)
@@ -107,6 +110,23 @@ def build_circuit(gates: List[Tuple[str, Optional[float]]]) -> QuantumCircuit:
             qc.rz(float(angle), 0)  # type: ignore[arg-type]
         else:
             raise ValueError(f"Unsupported gate: {name}")
+    return qc
+
+
+def prepare_initial_state(key: str) -> QuantumCircuit:
+    """Return a circuit that prepares a chosen initial state on |0>.
+
+    key in {"|0>", "|+>", "|i>"}
+    |0>: default computational basis state
+    |+>: H|0>
+    |i>: S H |0> (global phase ignored)
+    """
+    qc = QuantumCircuit(1)
+    if key == "|+>":
+        qc.h(0)
+    elif key == "|i>":
+        qc.h(0)
+        qc.s(0)
     return qc
 
 
