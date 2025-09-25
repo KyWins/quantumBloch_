@@ -25,7 +25,7 @@ st.markdown(
     "Type a comma-separated list of gates. Examples: `H`, `X`, `Rx(pi/2)`, `Rz(90deg)`, `H, Rz(π/2), H`."
 )
 
-preset = st.segmented_control("Presets", ["None", "|0⟩", "|+⟩", "|i⟩"], selection_mode="single", key="preset")
+preset = st.radio("Presets", ["None", "|0⟩", "|+⟩", "|i⟩"], horizontal=True, key="preset")
 
 
 def _preset_sequence(name: str) -> str:
