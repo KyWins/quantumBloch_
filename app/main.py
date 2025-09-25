@@ -37,10 +37,22 @@ with st.expander("Examples"):
     st.code("Rx(pi/2), Ry(pi/3), Rz(-pi/4)", language="text")
     st.caption("Angles accept `pi`, `π`, simple expressions like `pi/2`, and `deg` (e.g., `90deg`).")
 
-# Shareable URL hydration
+# Shareable URL hydration (handle values as strings or lists)
 qp = st.query_params
-qp_preset = qp.get("preset", ["|0⟩"])[0]
-qp_seq = qp.get("seq", [""])[0]
+
+def _qp_get(key: str, default: str) -> str:
+    try:
+        val = qp.get(key, default)
+    except Exception:
+        return default
+    if isinstance(val, list):
+        return val[0] if val else default
+    if isinstance(val, str):
+        return val if val != "" else default
+    return default
+
+qp_preset = _qp_get("preset", "|0⟩")
+qp_seq = _qp_get("seq", "")
 
 preset = st.radio(
     "Initial state preset",
