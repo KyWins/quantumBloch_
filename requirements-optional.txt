@@ -1,0 +1,10 @@
+# Optional visualization backends
+qutip==5.0.3
+# cirq-web often requires Python >=3.10; install only if compatible
+# cirq-web==1.5.0
+bloch-sphere==0.2.0
+
+# Optional alternative apps
+dash==2.17.1
+fastapi==0.115.2
+uvicorn==0.30.6
