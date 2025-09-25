@@ -24,11 +24,20 @@ def bloch_figure(xs: List[float], ys: List[float], zs: List[float], show_trail: 
         go.Scatter3d(x=[0, 0], y=[0, 0], z=[-1, 1], mode="lines", line=dict(color="#bbb"), hoverinfo="skip"),
     ])
 
+    # Basis labels
+    labels = [
+        (0, 0, 1, "|0⟩"), (0, 0, -1, "|1⟩"),
+        (1, 0, 0, "|+⟩"), (-1, 0, 0, "|−⟩"),
+        (0, 1, 0, "|+i⟩"), (0, -1, 0, "|−i⟩"),
+    ]
+    for x, y, z, t in labels:
+        fig.add_trace(go.Scatter3d(x=[x], y=[y], z=[z], mode="text", text=[t], textfont={"size": 12}, hoverinfo="skip"))
+
     if show_trail and len(xs) > 1:
-        fig.add_trace(go.Scatter3d(x=xs, y=ys, z=zs, mode="lines+markers", line=dict(color="#d62728", width=6), marker=dict(size=3, color="#d62728")))
+        fig.add_trace(go.Scatter3d(x=xs, y=ys, z=zs, mode="lines+markers", line=dict(color="#d62728", width=6), marker=dict(size=3, color="#d62728", opacity=0.7)))
 
     if xs and ys and zs:
-        fig.add_trace(go.Scatter3d(x=[xs[-1]], y=[ys[-1]], z=[zs[-1]], mode="markers", marker=dict(size=7, color="#111")))
+        fig.add_trace(go.Scatter3d(x=[xs[-1]], y=[ys[-1]], z=[zs[-1]], mode="markers+text", marker=dict(size=9, color="#111"), text=["Final"], textposition="top center"))
 
     fig.update_layout(
         scene=dict(

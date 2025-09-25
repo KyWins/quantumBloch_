@@ -26,6 +26,10 @@ def test_parse_variants_and_casing():
     assert almost(seq[1][1], math.pi / 2)
     assert almost(seq[3][1], -math.pi / 2)
 
+    # New: degrees parsing standardization
+    seq2 = parse_gate_sequence("Rz(90deg)")
+    assert seq2[0][0] == "RZ" and almost(seq2[0][1], math.pi / 2)
+
 
 def test_hadamard_equator_and_rx_flip():
     qc = QuantumCircuit(1); qc.h(0)

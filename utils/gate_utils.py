@@ -176,15 +176,13 @@ def statevector_after(circuit: QuantumCircuit) -> Statevector:
 
 
 def bloch_coordinates(state: Statevector) -> Tuple[float, float, float]:
-    """Compute Bloch vector coordinates (x, y, z) from a single-qubit statevector."""
+    """Compute Bloch vector coordinates (x, y, z) from a single-qubit statevector.
+
+    Delegates to state_to_bloch for numerical stability and consistency.
+    """
     if state.num_qubits != 1:
         raise ValueError("bloch_coordinates expects a single-qubit statevector")
-    alpha, beta = state.data
-    rho01 = alpha.conjugate() * beta
-    x = 2.0 * rho01.real
-    y = 2.0 * rho01.imag
-    z = (abs(alpha) ** 2) - (abs(beta) ** 2)
-    return float(x), float(y), float(z)
+    return state_to_bloch(state)
 
 
 def sequence_to_bloch_path(gates: List[str]) -> List[Tuple[float, float, float]]:
