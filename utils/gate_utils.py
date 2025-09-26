@@ -4,6 +4,8 @@ from typing import List, Tuple, Optional
 
 import math
 import re
+import ast
+import operator as op
 import numpy as np
 from qiskit import QuantumCircuit
 from qiskit.quantum_info import Statevector
@@ -11,26 +13,34 @@ from qiskit.quantum_info import Statevector
 
 SUPPORTED_GATES = {"I", "X", "Y", "Z", "H", "S", "SDG", "T", "TDG", "RX", "RY", "RZ"}
 
+# Safe arithmetic evaluator for basic expressions --------------------------------
+_ALLOWED_BINOPS = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul, ast.Div: op.truediv}
+_ALLOWED_UNARYOPS = {ast.UAdd: op.pos, ast.USub: op.neg}
 
-def parse_gate_token(token: str) -> Tuple[str, float | None]:
-    """Parse a gate token like 'H', 'X', 'Rx(pi/2)', 'Rz(1.5708)'.
 
-    Returns (UPPERCASE gate_name, angle_radians_or_None).
-    """
-    token = token.strip()
-    if "(" not in token:
-        gate = token
-        angle = None
-    else:
-        gate, arg = token.split("(", 1)
-        arg = arg.rstrip(")").strip()
-        angle = _parse_angle_to_radians(arg)
-    gate = gate.strip().upper()
-    if gate not in SUPPORTED_GATES:
-        raise ValueError(f"Unsupported gate: {gate}")
-    if gate in {"RX", "RY", "RZ"} and angle is None:
-        raise ValueError(f"Rotation gate {gate} requires an angle, e.g., {gate}(pi/2)")
-    return gate, angle
+def _safe_eval_arith(expr: str) -> float:
+    node = ast.parse(expr, mode="eval")
+
+    def _eval(n: ast.AST) -> float:
+        if isinstance(n, ast.Expression):
+            return _eval(n.body)
+        if isinstance(n, ast.Num):  # Python <3.8 compatibility
+            return float(n.n)
+        if isinstance(n, ast.Constant):  # Python 3.8+
+            if isinstance(n.value, (int, float)):
+                return float(n.value)
+            raise ValueError("Invalid constant in angle expression")
+        if isinstance(n, ast.UnaryOp) and type(n.op) in _ALLOWED_UNARYOPS:
+            return _ALLOWED_UNARYOPS[type(n.op)](_eval(n.operand))
+        if isinstance(n, ast.BinOp) and type(n.op) in _ALLOWED_BINOPS:
+            left = _eval(n.left)
+            right = _eval(n.right)
+            return _ALLOWED_BINOPS[type(n.op)](left, right)
+        if isinstance(n, ast.Tuple):
+            raise ValueError("Tuples not allowed in angle expression")
+        raise ValueError("Unsupported syntax in angle expression")
+
+    return float(_eval(node))
 
 
 # Enhanced angle parsing -------------------------------------------------------
@@ -39,7 +49,7 @@ _GATE_RX = re.compile(r"^(rx|ry|rz)\((.+)\)$", re.IGNORECASE)
 
 
 def _parse_angle_to_radians(expr: str) -> float:
-    """Parse expressions like 'pi', 'π/2', '2*pi/3', '1.234', '90deg', '-45deg'."""
+    """Parse expressions like 'pi', 'π/2', '2*pi/3', '1.234', '90deg', '-45deg' using a safe arithmetic evaluator."""
     s = expr.strip()
     for name, value in _PI_ALIASES.items():
         s = re.sub(fr"(?i){name}", f"({value})", s)
@@ -52,7 +62,7 @@ def _parse_angle_to_radians(expr: str) -> float:
             raise ValueError(f"Invalid degree angle: {expr}") from exc
         return math.radians(degrees)
     try:
-        return float(eval(s, {"__builtins__": {}}, {"math": math}))
+        return _safe_eval_arith(s)
     except Exception as exc:
         raise ValueError(f"Invalid angle expression: {expr}") from exc
 
