@@ -88,6 +88,23 @@ def parse_gate_sequence(seq: str) -> List[Tuple[str, Optional[float]]]:
     return result
 
 
+def parse_gate_token(token: str) -> Tuple[str, Optional[float]]:
+    """Parse a single gate token like 'H', 'X', 'Rx(pi/2)', 'Rz(1.5708)' -> (UPPERCASE gate, angle_or_None)."""
+    token = token.strip()
+    if "(" in token and token.endswith(")"):
+        gate, arg = token.split("(", 1)
+        gate = gate.strip().upper()
+        angle = _parse_angle_to_radians(arg[:-1].strip())
+    else:
+        gate = token.strip().upper()
+        angle = None
+    if gate not in SUPPORTED_GATES:
+        raise ValueError(f"Unsupported gate: {gate}")
+    if gate in {"RX", "RY", "RZ"} and angle is None:
+        raise ValueError(f"Rotation gate {gate} requires an angle, e.g., {gate}(pi/2)")
+    return gate, angle
+
+
 def build_circuit(gates: List[Tuple[str, Optional[float]]], base: QuantumCircuit | None = None) -> QuantumCircuit:
     """Build a single-qubit circuit from parsed gate tuples.
 
