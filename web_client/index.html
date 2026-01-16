@@ -7,88 +7,213 @@
   <script src="https://cdn.plot.ly/plotly-2.35.3.min.js"></script>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
-    #plot { width: 100%; height: 80vh; }
-    input, select { font-size: 14px; padding: 6px 8px; }
+    h2 { margin-top: 0; }
+    #plot { width: 100%; height: 70vh; }
+    input[type="text"] { font-size: 14px; padding: 6px 8px; }
+    button { font-size: 14px; padding: 6px 14px; margin-left: 8px; }
+    .controls { margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px; max-width: 720px; }
+    .slider-row { display: flex; align-items: center; gap: 12px; }
+    .metrics { margin-top: 24px; max-width: 480px; }
+    .metrics table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .metrics th { text-align: left; padding-bottom: 6px; }
+    .metrics td { padding: 4px 0; }
+    #status { margin-top: 12px; font-size: 13px; color: #d62728; }
   </style>
 </head>
 <body>
   <h2>Bloch Sphere Visualizer (Web)</h2>
-  <div>
-    <label>Gate sequence</label>
-    <input id="sequence" style="width: 60%" value="H, Rz(pi/2), H" />
-    <button id="run">Run</button>
+  <div class="controls">
+    <div>
+      <label for="sequence">Gate sequence</label>
+      <input id="sequence" type="text" style="width: 60%" value="H, Rz(pi/2), H" />
+      <button id="run">Run</button>
+    </div>
+    <div class="slider-row">
+      <label for="step">Step</label>
+      <input id="step" type="range" min="0" max="0" value="0" disabled />
+      <span id="step-label">Step 0 / 0</span>
+    </div>
   </div>
+  <div id="status"></div>
   <div id="plot"></div>
+  <div id="metrics" class="metrics"></div>
 
   <script>
-    async function fetchPath(sequence) {
+    let currentData = null;
+
+    async function fetchSimulation(sequenceText) {
+      const payload = { sequence_text: sequenceText };
       const res = await fetch('/bloch-path', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sequence })
+        body: JSON.stringify(payload)
       });
-      const json = await res.json();
-      return json.path || [];
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        const message = detail.detail || res.statusText || 'Simulation failed';
+        throw new Error(message);
+      }
+      return res.json();
     }
 
-    function renderPlot(path) {
-      // Base sphere
-      const u = [], v = [];
-      const uSteps = 60, vSteps = 30;
-      for (let i = 0; i < uSteps; i++) u.push(2 * Math.PI * i / (uSteps - 1));
-      for (let j = 0; j < vSteps; j++) v.push(Math.PI * j / (vSteps - 1));
+    function renderPlot(snapshots, stepIndex) {
+      const coords = snapshots.map(s => s.bloch);
 
-      const xs = [], ys = [], zs = [];
+      const uSteps = 60;
+      const vSteps = 30;
+      const u = Array.from({ length: uSteps }, (_, i) => 2 * Math.PI * i / (uSteps - 1));
+      const v = Array.from({ length: vSteps }, (_, j) => Math.PI * j / (vSteps - 1));
+
+      const sphereX = [], sphereY = [], sphereZ = [];
       for (let i = 0; i < u.length; i++) {
-        xs[i] = []; ys[i] = []; zs[i] = [];
+        sphereX[i] = [];
+        sphereY[i] = [];
+        sphereZ[i] = [];
         for (let j = 0; j < v.length; j++) {
-          xs[i][j] = Math.cos(u[i]) * Math.sin(v[j]);
-          ys[i][j] = Math.sin(u[i]) * Math.sin(v[j]);
-          zs[i][j] = Math.cos(v[j]);
+          sphereX[i][j] = Math.cos(u[i]) * Math.sin(v[j]);
+          sphereY[i][j] = Math.sin(u[i]) * Math.sin(v[j]);
+          sphereZ[i][j] = Math.cos(v[j]);
         }
       }
 
       const sphere = {
-        type: 'surface', x: xs, y: ys, z: zs, showscale: false, opacity: 0.28,
+        type: 'surface',
+        x: sphereX,
+        y: sphereY,
+        z: sphereZ,
+        showscale: false,
+        opacity: 0.28,
         colorscale: [[0, '#e6f0ff'], [1, '#99c2ff']]
       };
 
       const axes = [
-        {type:'scatter3d', x:[-1,1], y:[0,0], z:[0,0], mode:'lines', line:{color:'#bbb'}},
-        {type:'scatter3d', x:[0,0], y:[-1,1], z:[0,0], mode:'lines', line:{color:'#bbb'}},
-        {type:'scatter3d', x:[0,0], y:[0,0], z:[-1,1], mode:'lines', line:{color:'#bbb'}},
+        { type: 'scatter3d', x: [-1, 1], y: [0, 0], z: [0, 0], mode: 'lines', line: { color: '#bbb' } },
+        { type: 'scatter3d', x: [0, 0], y: [-1, 1], z: [0, 0], mode: 'lines', line: { color: '#bbb' } },
+        { type: 'scatter3d', x: [0, 0], y: [0, 0], z: [-1, 1], mode: 'lines', line: { color: '#bbb' } },
       ];
 
       const traces = [sphere, ...axes];
-      if (path.length) {
-        const xsP = path.map(p => p[0]);
-        const ysP = path.map(p => p[1]);
-        const zsP = path.map(p => p[2]);
-        traces.push({type:'scatter3d', x: xsP, y: ysP, z: zsP, mode: 'lines+markers', line:{color:'#d62728', width:6}, marker:{size:3, color:'#d62728'}});
-        traces.push({type:'scatter3d', x: [xsP[xsP.length-1]], y: [ysP[ysP.length-1]], z: [zsP[zsP.length-1]], mode: 'markers', marker:{size:7, color:'#111'}});
+
+      if (coords.length) {
+        const xs = coords.map(c => c[0]);
+        const ys = coords.map(c => c[1]);
+        const zs = coords.map(c => c[2]);
+        traces.push({
+          type: 'scatter3d',
+          x: xs,
+          y: ys,
+          z: zs,
+          mode: 'lines+markers',
+          line: { color: '#d62728', width: 6 },
+          marker: { size: 3, color: '#d62728' },
+          name: 'trajectory'
+        });
+
+        const final = coords[coords.length - 1];
+        traces.push({
+          type: 'scatter3d',
+          x: [final[0]],
+          y: [final[1]],
+          z: [final[2]],
+          mode: 'markers',
+          marker: { size: 7, color: '#111' },
+          name: 'final'
+        });
+
+        const selected = coords[Math.min(stepIndex, coords.length - 1)];
+        traces.push({
+          type: 'scatter3d',
+          x: [selected[0]],
+          y: [selected[1]],
+          z: [selected[2]],
+          mode: 'markers+text',
+          marker: { size: 9, color: '#1f77b4' },
+          text: ['Selected'],
+          textposition: 'top center',
+          name: 'selected'
+        });
       }
 
       Plotly.newPlot('plot', traces, {
         scene: {
           aspectmode: 'cube',
-          xaxis: {range: [-1.1,1.1], title:'X', gridcolor:'#eee'},
-          yaxis: {range: [-1.1,1.1], title:'Y', gridcolor:'#eee'},
-          zaxis: {range: [-1.1,1.1], title:'Z', gridcolor:'#eee'}
+          xaxis: { range: [-1.1, 1.1], title: 'X', gridcolor: '#eee' },
+          yaxis: { range: [-1.1, 1.1], title: 'Y', gridcolor: '#eee' },
+          zaxis: { range: [-1.1, 1.1], title: 'Z', gridcolor: '#eee' }
         },
-        margin: {l:0, r:0, b:0, t:30},
+        margin: { l: 0, r: 0, b: 0, t: 30 },
         title: 'Bloch Sphere (Web)'
       });
     }
 
-    document.getElementById('run').addEventListener('click', async () => {
-      const raw = document.getElementById('sequence').value;
-      const seq = raw.split(',').map(s => s.trim()).filter(Boolean);
-      const path = await fetchPath(seq);
-      renderPlot(path);
+    function renderMetrics(snapshot, totalSteps) {
+      const metricsDiv = document.getElementById('metrics');
+      if (!snapshot) {
+        metricsDiv.innerHTML = '';
+        return;
+      }
+      const { label, bloch, probabilities, theta, phi } = snapshot;
+      metricsDiv.innerHTML = `
+        <table>
+          <thead><tr><th colspan="2">Step ${snapshot.step} / ${totalSteps} – ${label}</th></tr></thead>
+          <tbody>
+            <tr><td>x</td><td>${bloch[0].toFixed(3)}</td></tr>
+            <tr><td>y</td><td>${bloch[1].toFixed(3)}</td></tr>
+            <tr><td>z</td><td>${bloch[2].toFixed(3)}</td></tr>
+            <tr><td>θ (rad)</td><td>${theta.toFixed(3)}</td></tr>
+            <tr><td>φ (rad)</td><td>${phi.toFixed(3)}</td></tr>
+            <tr><td>|0⟩ probability</td><td>${probabilities["|0⟩"].toFixed(3)}</td></tr>
+            <tr><td>|1⟩ probability</td><td>${probabilities["|1⟩"].toFixed(3)}</td></tr>
+          </tbody>
+        </table>
+      `;
+    }
+
+    function updateStepLabel(current, total) {
+      document.getElementById('step-label').textContent = `Step ${current} / ${total}`;
+    }
+
+    async function runSimulation() {
+      const status = document.getElementById('status');
+      status.textContent = '';
+      const raw = document.getElementById('sequence').value || '';
+      try {
+        const data = await fetchSimulation(raw);
+        currentData = data;
+        const slider = document.getElementById('step');
+        const totalSteps = data.snapshots.length - 1;
+        slider.max = Math.max(0, totalSteps);
+        slider.value = Math.max(0, totalSteps);
+        slider.disabled = data.snapshots.length <= 1;
+        updateStepLabel(slider.value, totalSteps);
+        renderPlot(data.snapshots, parseInt(slider.value, 10));
+        renderMetrics(data.snapshots[parseInt(slider.value, 10)], totalSteps);
+      } catch (err) {
+        currentData = null;
+        document.getElementById('plot').innerHTML = '';
+        document.getElementById('metrics').innerHTML = '';
+        updateStepLabel(0, 0);
+        document.getElementById('step').disabled = true;
+        status.textContent = err.message;
+      }
+    }
+
+    document.getElementById('run').addEventListener('click', runSimulation);
+
+    document.getElementById('step').addEventListener('input', event => {
+      if (!currentData) return;
+      const idx = parseInt(event.target.value, 10);
+      const total = currentData.snapshots.length - 1;
+      updateStepLabel(idx, total);
+      renderPlot(currentData.snapshots, idx);
+      renderMetrics(currentData.snapshots[idx], total);
     });
 
     // Initial render
-    document.getElementById('run').click();
+    runSimulation();
   </script>
 </body>
 </html>
+
+
+

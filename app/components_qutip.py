@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Mapping, Any
 
 try:
     import qutip as qt  # type: ignore
@@ -12,7 +12,10 @@ from app.components import register_visualizer
 PathType = List[Tuple[float, float, float]]
 
 
-def qutip_bloch_renderer(path_xyz: PathType, save_path: Optional[str] = None) -> object:
+def qutip_bloch_renderer(path_xyz: PathType, ctx: Optional[Mapping[str, Any]] = None, save_path: Optional[str] = None) -> object:
+    if isinstance(ctx, str) and save_path is None:  # backwards compatibility: ctx parameter used as save_path
+        save_path = ctx
+        ctx = None
     if qt is None:
         raise ImportError("QuTiP not installed. Please install 'qutip' to use this backend.")
 
@@ -36,6 +39,9 @@ def qutip_bloch_renderer(path_xyz: PathType, save_path: Optional[str] = None) ->
 
 # Register on import if available
 try:  # pragma: no cover
-    register_visualizer("qutip", lambda path: qutip_bloch_renderer(path))
+    register_visualizer("qutip", qutip_bloch_renderer)
 except Exception:
     pass
+
+
+

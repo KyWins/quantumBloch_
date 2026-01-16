@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from typing import List
-
 from dash import Dash, dcc, html, Input, Output
 import plotly.graph_objects as go
 
-from utils.gate_utils import sequence_to_bloch_path
+from utils.gate_utils import GateParseError, simulate_sequence
 from app.components import make_bloch_figure
 
 app = Dash(__name__)
@@ -28,11 +26,25 @@ app.layout = html.Div([
 
 @app.callback(Output("bloch-graph", "figure"), [Input("sequence", "value"), Input("backend", "value")])
 def update_graph(seq_text: str, backend: str) -> go.Figure:
-    sequence: List[str] = [t.strip() for t in (seq_text or "").split(",") if t.strip()]
-    path = sequence_to_bloch_path(sequence) if sequence else []
-    fig = make_bloch_figure(path, backend=backend)
+    try:
+        result = simulate_sequence("|0>", seq_text or "")
+        coords = list(result.coordinates)
+    except GateParseError as exc:
+        coords = []
+        # Minimal figure with error note
+        fig = go.Figure()
+        fig.add_annotation(text=f"Parse error: {exc}", x=0.5, y=0.5, showarrow=False)
+        fig.update_layout(template="plotly_white")
+        return fig
+
+    context = {"selected_index": max(0, len(coords) - 1)}
+    fig = make_bloch_figure(coords, backend=backend, context=context)
     return fig  # type: ignore
 
 
 if __name__ == "__main__":
     app.run_server(host="127.0.0.1", port=8050, debug=False)
+
+
+
+

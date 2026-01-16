@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "bloch-backend"
+version = "0.1.0"
+description = "Hexagonal FastAPI backend for Bloch sphere visualizer"
+authors = ["QuantumExperiment Team"]
+readme = "../docs/project_plan.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.31.0"}
+qiskit = "^1.2.4"
+qiskit-aer = "^0.15.1"
+pydantic = "^2.9.0"
+pydantic-settings = "^2.5.2"
+python-dotenv = "^1.0.1"
+numpy = "^2.0.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.3"
+ruff = "^0.7.0"
+mypy = "^1.11.0"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+select = ["E", "F", "I"]
+
+[tool.mypy]
+python_version = "3.9"
+ignore_missing_imports = true
+
+[build-system]
+requires = ["poetry-core>=1.8.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bloch Workbench – Dark Mock</title>
+    <link rel="stylesheet" href="mock.css" />
+  </head>
+  <body class="dark">
+    <div class="shell">
+      <header>
+        <div class="title">Bloch Sphere Workbench</div>
+        <div class="actions">
+          <button>Undo</button>
+          <button>Redo</button>
+          <button>Examples</button>
+          <button>Export</button>
+          <button>Theme</button>
+        </div>
+      </header>
+      <main>
+        <aside class="panel palette">
+          <section>
+            <h3>Basic</h3>
+            <div class="grid">
+              <button>I</button>
+              <button>X</button>
+              <button>Y</button>
+              <button>Z</button>
+              <button>H</button>
+              <button>S</button>
+            </div>
+          </section>
+          <section>
+            <h3>Measurement</h3>
+            <div class="grid">
+              <button>MZ</button>
+              <button>MX</button>
+              <button>MY</button>
+            </div>
+          </section>
+        </aside>
+        <section class="panel canvas">
+          <div class="lane">
+            <div class="lane-label">q[0]</div>
+            <div class="lane-track">
+              <div class="gate-card">
+                <div class="gate-name">Ry</div>
+                <div class="gate-meta">θ = π/4</div>
+              </div>
+              <div class="gate-card">
+                <div class="gate-name">Measure Z</div>
+                <div class="gate-meta">Shots: 512</div>
+              </div>
+            </div>
+          </div>
+          <div class="lane">
+            <div class="lane-label">q[1]</div>
+            <div class="lane-track">
+              <div class="gate-card">
+                <div class="gate-name">Reset</div>
+                <div class="gate-meta">Noise: off</div>
+              </div>
+            </div>
+          </div>
+          <div class="timeline">
+            <div class="step">0</div>
+            <div class="step" style="background: var(--accent); color: var(--panel);">1</div>
+            <div class="step">2</div>
+          </div>
+        </section>
+        <aside class="panel readout">
+          <div class="chart">Bloch plot</div>
+          <div class="chart">Fidelity chart</div>
+          <div class="measure">
+            <label>Basis
+              <select>
+                <option>Y</option>
+                <option>Z</option>
+                <option>X</option>
+              </select>
+            </label>
+            <label>Shots
+              <input type="number" value="512" />
+            </label>
+            <button>Sample</button>
+            <p class="muted">Outcome: - (counts +: 240, -: 272)</p>
+          </div>
+        </aside>
+      </main>
+    </div>
+  </body>
+</html>

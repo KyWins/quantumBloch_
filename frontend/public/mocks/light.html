@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bloch Workbench – Light Mock</title>
+    <link rel="stylesheet" href="mock.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <div class="title">Bloch Sphere Workbench</div>
+        <div class="actions">
+          <button>Undo</button>
+          <button>Redo</button>
+          <button>Examples</button>
+          <button>Export</button>
+          <button>Theme</button>
+        </div>
+      </header>
+      <main>
+        <aside class="panel palette">
+          <section>
+            <h3>Basic</h3>
+            <div class="grid">
+              <button>I</button>
+              <button>X</button>
+              <button>Y</button>
+              <button>Z</button>
+              <button>H</button>
+              <button>S</button>
+            </div>
+          </section>
+          <section>
+            <h3>Rotations</h3>
+            <div class="grid">
+              <button>Rx</button>
+              <button>Ry</button>
+              <button>Rz</button>
+              <button>Phase</button>
+              <button>Rx π/2</button>
+              <button>Ry π/2</button>
+            </div>
+          </section>
+          <section>
+            <h3>Controls / Noise</h3>
+            <div class="grid">
+              <button>CX</button>
+              <button>CZ</button>
+              <button>Reset</button>
+              <button>Depol</button>
+              <button>AmpDamp</button>
+              <button>PhaseDamp</button>
+            </div>
+          </section>
+        </aside>
+        <section class="panel canvas">
+          <div class="lane">
+            <div class="lane-label">q[0]</div>
+            <div class="lane-track">
+              <div class="gate-card">
+                <div class="gate-name">H</div>
+                <div class="gate-meta">θ = π/2</div>
+              </div>
+              <div class="gate-card">
+                <div class="gate-name">Rz</div>
+                <div class="gate-meta">θ = π/2</div>
+              </div>
+            </div>
+          </div>
+          <div class="lane">
+            <div class="lane-label">q[1]</div>
+            <div class="lane-track">
+              <div class="gate-card">
+                <div class="gate-name">Reset</div>
+                <div class="gate-meta">Noise: mild</div>
+              </div>
+              <div class="gate-card">
+                <div class="gate-name">CX</div>
+                <div class="gate-meta">ctrl: q[0]</div>
+              </div>
+            </div>
+          </div>
+          <div class="timeline">
+            <div class="step">0</div>
+            <div class="step">1</div>
+            <div class="step" style="background: var(--accent); color: white;">2</div>
+            <div class="step">3</div>
+          </div>
+        </section>
+        <aside class="panel readout">
+          <div class="chart">Bloch plot</div>
+          <div class="chart">⟨X⟩ ⟨Y⟩ ⟨Z⟩</div>
+          <div class="measure">
+            <label>Basis
+              <select>
+                <option>Z</option>
+                <option>X</option>
+                <option>Y</option>
+              </select>
+            </label>
+            <label>Shots
+              <input type="number" value="256" />
+            </label>
+            <button>Sample</button>
+            <p class="muted">Outcome: + (counts +: 180, -: 76)</p>
+          </div>
+        </aside>
+      </main>
+    </div>
+  </body>
+</html>

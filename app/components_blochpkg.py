@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 try:
     from bloch_sphere import BlochSphere  # type: ignore
@@ -12,7 +12,7 @@ from app.components import register_visualizer
 PathType = List[Tuple[float, float, float]]
 
 
-def blochpkg_renderer(path_xyz: PathType) -> object:
+def blochpkg_renderer(path_xyz: PathType, ctx: Optional[dict] = None) -> object:
     if BlochSphere is None:
         raise ImportError("bloch-sphere not installed. Please install 'bloch-sphere' to use this backend.")
     sphere = BlochSphere()
@@ -28,6 +28,10 @@ def blochpkg_renderer(path_xyz: PathType) -> object:
 
 # Register on import if available
 try:  # pragma: no cover
-    register_visualizer("bloch-sphere", lambda path: blochpkg_renderer(path))
+    register_visualizer("bloch-sphere", blochpkg_renderer)
 except Exception:
     pass
+
+
+
+

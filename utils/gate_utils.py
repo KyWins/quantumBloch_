@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, NamedTuple
 
 import math
 import re
@@ -11,7 +11,33 @@ from qiskit import QuantumCircuit
 from qiskit.quantum_info import Statevector
 
 
-SUPPORTED_GATES = {"I", "X", "Y", "Z", "H", "S", "SDG", "T", "TDG", "RX", "RY", "RZ"}
+SUPPORTED_GATES = {"I", "X", "Y", "Z", "H", "S", "SDG", "T", "TDG", "SX", "SXDG", "P", "RX", "RY", "RZ"}
+ANGLE_GATES = {"RX", "RY", "RZ", "P"}
+_GATE_ALIASES = {"ID": "I"}
+
+
+class GateParseError(ValueError):
+    """Raised when a gate token cannot be parsed."""
+
+    def __init__(self, token: str, index: Optional[int], message: str):
+        self.token = token
+        self.index = index
+        super().__init__(message)
+
+    def __str__(self) -> str:
+        position = f" (token #{self.index + 1})" if self.index is not None else ""
+        return f"{super().__str__()} [offending token: '{self.token}']{position}"
+
+
+ParsedGate = Tuple[str, Optional[float]]
+Coordinate = Tuple[float, float, float]
+StateTuple = Tuple[complex, complex]
+
+
+class SimulationResult(NamedTuple):
+    gates: Tuple[ParsedGate, ...]
+    coordinates: Tuple[Coordinate, ...]
+    states: Tuple[StateTuple, ...]
 
 # Safe arithmetic evaluator for basic expressions --------------------------------
 _ALLOWED_BINOPS = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul, ast.Div: op.truediv}
@@ -45,9 +71,6 @@ def _safe_eval_arith(expr: str) -> float:
 
 # Enhanced angle parsing -------------------------------------------------------
 _PI_ALIASES = {"pi": math.pi, "π": math.pi}
-_GATE_RX = re.compile(r"^(rx|ry|rz)\((.+)\)$", re.IGNORECASE)
-
-
 def _parse_angle_to_radians(expr: str) -> float:
     """Parse expressions like 'pi', 'π/2', '2*pi/3', '1.234', '90deg', '-45deg' using a safe arithmetic evaluator."""
     s = expr.strip()
@@ -69,43 +92,56 @@ def _parse_angle_to_radians(expr: str) -> float:
 
 # New parser that accepts a free-form sequence string -------------------------
 
-def parse_gate_sequence(seq: str) -> List[Tuple[str, Optional[float]]]:
+def parse_gate_sequence(seq: str) -> List[ParsedGate]:
     """Parse a comma-separated sequence into normalized (UPPERCASE gate, angle) tuples."""
-    tokens = [t.strip() for t in seq.split(",") if t.strip()]
-    result: List[Tuple[str, Optional[float]]] = []
-    for token in tokens:
-        m = _GATE_RX.match(token)
-        if m:
-            gate = m.group(1).upper()
-            angle = _parse_angle_to_radians(m.group(2))
-            result.append((gate, float(angle)))
+    tokens = [t.strip() for t in seq.split(",")]
+    result: List[ParsedGate] = []
+    for idx, token in enumerate(tokens):
+        if not token:
             continue
-        up = token.upper()
-        if up in {"H", "X", "Y", "Z", "I", "S", "SDG", "T", "TDG"}:
-            result.append((up, None))
-        else:
-            raise ValueError(f"Unrecognized gate token: '{token}'")
+        result.append(parse_gate_token(token, index=idx))
     return result
 
 
-def parse_gate_token(token: str) -> Tuple[str, Optional[float]]:
+def parse_gate_token(token: str, *, index: Optional[int] = None) -> ParsedGate:
     """Parse a single gate token like 'H', 'X', 'Rx(pi/2)', 'Rz(1.5708)' -> (UPPERCASE gate, angle_or_None)."""
     token = token.strip()
-    if "(" in token and token.endswith(")"):
+    if not token:
+        raise GateParseError(token, index, "Empty gate token")
+
+    angle: Optional[float] = None
+    if "(" in token:
+        if not token.endswith(")"):
+            raise GateParseError(token, index, "Gate arguments must be enclosed in parentheses")
         gate, arg = token.split("(", 1)
         gate = gate.strip().upper()
-        angle = _parse_angle_to_radians(arg[:-1].strip())
+        arg = arg[:-1].strip()
+        if not arg:
+            raise GateParseError(token, index, f"Gate {gate or token} requires an angle expression")
+        try:
+            angle = _parse_angle_to_radians(arg)
+        except ValueError as exc:
+            raise GateParseError(token, index, str(exc)) from exc
     else:
-        gate = token.strip().upper()
-        angle = None
+        gate = token.upper()
+
+    gate = _GATE_ALIASES.get(gate, gate)
+
     if gate not in SUPPORTED_GATES:
-        raise ValueError(f"Unsupported gate: {gate}")
-    if gate in {"RX", "RY", "RZ"} and angle is None:
-        raise ValueError(f"Rotation gate {gate} requires an angle, e.g., {gate}(pi/2)")
+        supported = ", ".join(sorted(SUPPORTED_GATES))
+        raise GateParseError(token, index, f"Unsupported gate '{gate}'. Supported gates: {supported}")
+
+    if gate in ANGLE_GATES:
+        if angle is None:
+            raise GateParseError(token, index, f"Gate {gate} requires an angle, e.g., {gate}(pi/2)")
+        angle = float(angle)
+    elif angle is not None:
+        raise GateParseError(token, index, f"Gate {gate} does not take an angle")
+
     return gate, angle
 
 
-def build_circuit(gates: List[Tuple[str, Optional[float]]], base: QuantumCircuit | None = None) -> QuantumCircuit:
+def build_circuit(gates: List[ParsedGate], base: QuantumCircuit | None = None) -> QuantumCircuit:
     """Build a single-qubit circuit from parsed gate tuples.
 
     If base is provided, append to it in-place and return it; otherwise create a new circuit.
@@ -130,6 +166,12 @@ def build_circuit(gates: List[Tuple[str, Optional[float]]], base: QuantumCircuit
             qc.t(0)
         elif name == "TDG":
             qc.tdg(0)
+        elif name == "SX":
+            qc.sx(0)
+        elif name == "SXDG":
+            qc.sxdg(0)
+        elif name == "P":
+            qc.p(float(angle), 0)  # type: ignore[arg-type]
         elif name == "RX":
             qc.rx(float(angle), 0)  # type: ignore[arg-type]
         elif name == "RY":
@@ -164,10 +206,16 @@ def apply_gates(circuit: QuantumCircuit, gates: List[str]) -> QuantumCircuit:
     """Apply a list of gate tokens to a single-qubit circuit in-place and return it."""
     if circuit.num_qubits != 1:
         raise ValueError("apply_gates expects a single-qubit circuit")
-    for token in gates:
-        name, angle = parse_gate_token(token)
+    for idx, token in enumerate(gates):
+        name, angle = parse_gate_token(token, index=idx)
         if name == "I":
             circuit.i(0)
+        elif name == "SX":
+            circuit.sx(0)
+        elif name == "SXDG":
+            circuit.sxdg(0)
+        elif name == "P":
+            circuit.p(angle, 0)  # type: ignore[arg-type]
         elif name == "X":
             circuit.x(0)
         elif name == "Y":
@@ -214,10 +262,11 @@ def bloch_coordinates(state: Statevector) -> Tuple[float, float, float]:
 
 def sequence_to_bloch_path(gates: List[str]) -> List[Tuple[float, float, float]]:
     """Return Bloch coordinates after each prefix of the sequence, starting from |0>."""
-    circ = QuantumCircuit(1)
+    circ = prepare_initial_state("|0>")
     path: List[Tuple[float, float, float]] = []
-    for idx in range(len(gates)):
-        circ = apply_gates(QuantumCircuit(1), gates[:idx + 1])
+    for idx, gate in enumerate(gates):
+        name, angle = parse_gate_token(gate, index=idx)
+        build_circuit([(name, angle)], base=circ)
         sv = statevector_after(circ)
         path.append(bloch_coordinates(sv))
     return path
@@ -262,3 +311,34 @@ def cartesian_to_spherical(x: float, y: float, z: float) -> Tuple[float, float]:
     theta = math.acos(max(-1.0, min(1.0, z / r)))
     phi = math.atan2(y, x)
     return theta, phi
+
+
+def _statevector_to_tuple(state: Statevector) -> StateTuple:
+    data = tuple(complex(val) for val in state.data.flatten())
+    if len(data) != 2:
+        raise ValueError("Only single-qubit states are supported")
+    return data  # type: ignore[return-value]
+
+
+def simulate_sequence(initial: str, seq_text: str) -> SimulationResult:
+    """Simulate a gate sequence, returning coordinates and statevectors after each step.
+
+    The first snapshot corresponds to the prepared initial state. Subsequent snapshots apply each gate in order.
+    """
+    gates = tuple(parse_gate_sequence(seq_text) if seq_text.strip() else [])
+    circuit = prepare_initial_state(initial)
+
+    snapshots: List[Coordinate] = []
+    states: List[StateTuple] = []
+
+    sv = statevector_after(circuit)
+    snapshots.append(state_to_bloch(sv))
+    states.append(_statevector_to_tuple(sv))
+
+    for name, angle in gates:
+        build_circuit([(name, angle)], base=circuit)
+        sv = statevector_after(circuit)
+        snapshots.append(state_to_bloch(sv))
+        states.append(_statevector_to_tuple(sv))
+
+    return SimulationResult(gates=gates, coordinates=tuple(snapshots), states=tuple(states))

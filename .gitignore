@@ -28,3 +28,20 @@ __pycache__/
 **/secrets.*
 **/*_secret.*
 **/*_secrets.*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+
+# Build outputs
+dist/
+build/
+node_modules/
+
+# Cache directories
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

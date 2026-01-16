@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import math
 
+import pytest
 from qiskit import QuantumCircuit
 from utils.gate_utils import (
+    GateParseError,
     parse_gate_sequence,
     parse_gate_token,
-    build_circuit,
     statevector_after,
     state_to_bloch,
     prepare_initial_state,
@@ -29,6 +30,13 @@ def test_parse_variants_and_casing():
     # New: degrees parsing standardization
     seq2 = parse_gate_sequence("Rz(90deg)")
     assert seq2[0][0] == "RZ" and almost(seq2[0][1], math.pi / 2)
+
+
+def test_rotation_gate_requires_angle():
+    with pytest.raises(GateParseError):
+        parse_gate_token("RX")
+    with pytest.raises(GateParseError):
+        parse_gate_token("H(pi/2)")
 
 
 def test_hadamard_equator_and_rx_flip():

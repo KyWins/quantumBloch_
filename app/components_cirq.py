@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Mapping, Any
 
 try:
     from cirq_web import bloch_sphere as cw_bloch  # type: ignore
@@ -12,7 +12,7 @@ from app.components import register_visualizer
 PathType = List[Tuple[float, float, float]]
 
 
-def cirq_web_renderer(path_xyz: PathType) -> object:
+def cirq_web_renderer(path_xyz: PathType, ctx: Optional[Mapping[str, Any]] = None) -> object:
     if cw_bloch is None:
         raise ImportError("cirq-web not installed. Please install 'cirq-web' to use this backend.")
 
@@ -26,6 +26,10 @@ def cirq_web_renderer(path_xyz: PathType) -> object:
 
 # Register on import if available
 try:  # pragma: no cover
-    register_visualizer("cirq-web", lambda path: cirq_web_renderer(path))
+    register_visualizer("cirq-web", cirq_web_renderer)
 except Exception:
     pass
+
+
+
+
