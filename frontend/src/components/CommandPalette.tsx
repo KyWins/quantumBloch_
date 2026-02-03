@@ -63,6 +63,49 @@ const ROTATION_DEFAULTS: Record<string, number[]> = {
 
 const CONTROL_GATES = new Set(["CX", "CZ"]);
 
+interface NumberStepperProps {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (value: number) => void;
+  ariaLabel: string;
+}
+
+function NumberStepper({ label, value, min, max, onChange, ariaLabel }: NumberStepperProps) {
+  const decrement = () => onChange(Math.max(min, value - 1));
+  const increment = () => onChange(Math.min(max, value + 1));
+
+  return (
+    <div className="number-stepper">
+      <span className="number-stepper-label">{label}</span>
+      <div className="number-stepper-controls">
+        <button
+          type="button"
+          className="stepper-btn"
+          onClick={decrement}
+          disabled={value <= min}
+          aria-label={`Decrease ${label}`}
+        >
+          −
+        </button>
+        <span className="stepper-value" aria-label={ariaLabel}>
+          {value}
+        </span>
+        <button
+          type="button"
+          className="stepper-btn"
+          onClick={increment}
+          disabled={value >= max}
+          aria-label={`Increase ${label}`}
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function CommandPalette() {
   const dispatch = useAppDispatch();
   const qubitCount = useAppSelector((state) => state.circuit.qubitCount);
@@ -117,49 +160,41 @@ export function CommandPalette() {
     );
   };
 
+  const handleQubitCountChange = (next: number) => {
+    if (Number.isFinite(next) && next >= 1 && next <= 8) {
+      dispatch(executeCommand({ command: new SetQubitCountCommand(next) }));
+    }
+  };
+
   return (
     <div className="command-palette" role="region" aria-labelledby={headingId}>
       <div className="palette-header">
         <h2 id={headingId}>Gate Palette</h2>
-        <div className="target-group" role="group" aria-label="Qubit configuration">
-          <label className="target-input">
-            <span>Qubits</span>
-            <input
-              type="number"
-              min={1}
-              max={8}
-              value={qubitCount}
-              aria-label="Number of qubits"
-              onChange={(event) => {
-                const next = Number(event.target.value);
-                if (Number.isFinite(next)) {
-                  dispatch(executeCommand({ command: new SetQubitCountCommand(next) }));
-                }
-              }}
-            />
-          </label>
-          <label className="target-input">
-            <span>Target</span>
-            <input
-              type="number"
-              min={0}
-              max={Math.max(0, qubitCount - 1)}
-              value={clampedTarget}
-              aria-label="Target qubit index"
-              onChange={(event) => setTargetQubit(Number(event.target.value))}
-            />
-          </label>
-          <label className="target-input">
-            <span>Control</span>
-            <input
-              type="number"
-              min={0}
-              max={Math.max(0, qubitCount - 1)}
-              value={clampedControl}
-              aria-label="Control qubit index"
-              onChange={(event) => setControlQubit(Number(event.target.value))}
-            />
-          </label>
+        <div className="stepper-group" role="group" aria-label="Qubit configuration">
+          <NumberStepper
+            label="Qubits"
+            value={qubitCount}
+            min={1}
+            max={8}
+            onChange={handleQubitCountChange}
+            ariaLabel="Number of qubits"
+          />
+          <NumberStepper
+            label="Target"
+            value={clampedTarget}
+            min={0}
+            max={Math.max(0, qubitCount - 1)}
+            onChange={setTargetQubit}
+            ariaLabel="Target qubit index"
+          />
+          <NumberStepper
+            label="Control"
+            value={clampedControl}
+            min={0}
+            max={Math.max(0, qubitCount - 1)}
+            onChange={setControlQubit}
+            ariaLabel="Control qubit index"
+          />
         </div>
       </div>
       {PALETTE.map((section) => (
