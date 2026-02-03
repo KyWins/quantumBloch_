@@ -19,6 +19,7 @@ numpy = "^2.0.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
+httpx = "^0.28.0"
 ruff = "^0.7.0"
 mypy = "^1.11.0"
 
@@ -32,6 +33,10 @@ select = ["E", "F", "I"]
 [tool.mypy]
 python_version = "3.9"
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
 
 [build-system]
 requires = ["poetry-core>=1.8.0"]
