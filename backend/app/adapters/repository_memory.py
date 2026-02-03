@@ -12,28 +12,34 @@ class InMemoryCircuitRepository(CircuitRepositoryPort):
     """Simple in-memory store for prototypes and tests."""
 
     def __init__(self) -> None:
-        self._store: Dict[str, Tuple[str | None, Circuit, Sequence[Snapshot], str]] = {}
+        self._store: Dict[
+            str, Tuple[str | None, Circuit, Sequence[Snapshot], int | None]
+        ] = {}
 
     async def save(
         self,
         circuit: Circuit,
         snapshots: Iterable[Snapshot],
+        *,
         name: str | None = None,
+        focus_qubit: int | None = None,
     ) -> str:
         circuit_id = uuid4().hex
         self._store[circuit_id] = (
             name,
             deepcopy(circuit),
             tuple(deepcopy(list(snapshots))),
-            "in-memory",
+            focus_qubit,
         )
         return circuit_id
 
-    async def load(self, circuit_id: str) -> tuple[Circuit, Sequence[Snapshot], str | None]:
+    async def load(
+        self, circuit_id: str
+    ) -> tuple[Circuit, Sequence[Snapshot], str | None, int | None]:
         if circuit_id not in self._store:
             raise KeyError(f"Circuit {circuit_id} not found")
-        name, circuit, snapshots, _ = self._store[circuit_id]
-        return deepcopy(circuit), tuple(deepcopy(list(snapshots))), name
+        name, circuit, snapshots, focus_qubit = self._store[circuit_id]
+        return deepcopy(circuit), tuple(deepcopy(list(snapshots))), name, focus_qubit
 
     async def list(self) -> Sequence[CircuitSummary]:
         summaries: list[CircuitSummary] = []

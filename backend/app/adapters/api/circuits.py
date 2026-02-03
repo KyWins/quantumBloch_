@@ -6,7 +6,7 @@ from app.domain.models import Circuit, Gate
 from app.domain.noise import NoiseConfig
 from app.domain.services import SnapshotService
 
-from ...schemas.circuit import CircuitSchema
+from ...schemas.circuit import CircuitSchema, GateSchema
 from ...schemas.export import ExportRequest, ExportResponse
 from ...schemas.persistence import (
     CircuitSummarySchema,
@@ -68,13 +68,13 @@ async def list_circuits(repository=Depends(get_repository)):
 async def load_circuit(circuit_id: str, service: SnapshotService = Depends(get_snapshot_service)):
     circuit, snapshots, name, focus_qubit = await service.load(circuit_id)
     gates = [
-        {
-            "name": gate.name,
-            "targets": list(gate.targets),
-            "controls": list(gate.controls),
-            "parameters": list(gate.parameters),
-            "metadata": gate.metadata,
-        }
+        GateSchema(
+            name=gate.name,
+            targets=gate.targets,
+            controls=gate.controls,
+            parameters=gate.parameters,
+            metadata=gate.metadata,
+        )
         for gate in circuit.gates
     ]
     circuit_schema = CircuitSchema(
