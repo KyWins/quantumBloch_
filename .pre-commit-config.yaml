@@ -1,0 +1,54 @@
+repos:
+  # Backend Python hooks
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.0
+    hooks:
+      - id: mypy
+        files: ^backend/app/
+        additional_dependencies:
+          - pydantic>=2.9.0
+          - pydantic-settings>=2.5.2
+          - fastapi>=0.115.0
+
+  # Frontend TypeScript/JavaScript hooks
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        files: ^frontend/src/
+        types_or: [javascript, jsx, ts, tsx, css, json]
+
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.11.1
+    hooks:
+      - id: eslint
+        files: ^frontend/src/.*\.[jt]sx?$
+        additional_dependencies:
+          - eslint@9.11.1
+          - "@typescript-eslint/eslint-plugin@8.5.0"
+          - "@typescript-eslint/parser@8.5.0"
+          - eslint-plugin-react@7.37.2
+          - eslint-plugin-react-hooks@5.1.0
+          - eslint-plugin-react-refresh@0.4.7
+
+  # General hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: check-merge-conflict
+      - id: detect-private-key

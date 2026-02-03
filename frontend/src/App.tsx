@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 import { CommandPalette } from "./components/CommandPalette";
 import { CircuitCanvas } from "./components/CircuitCanvas";
@@ -24,6 +24,34 @@ export default function App() {
   const [isExportOpen, setExportOpen] = useState(false);
   const [isExampleOpen, setExampleOpen] = useState(false);
   const [isEmbed, setIsEmbed] = useState(false);
+
+  // Keyboard shortcuts handler
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      // Check for modifier key (Cmd on Mac, Ctrl on Windows/Linux)
+      const isMod = event.metaKey || event.ctrlKey;
+
+      if (isMod && event.key === "z" && !event.shiftKey && undoAvailable) {
+        event.preventDefault();
+        dispatch(undo());
+      } else if (isMod && event.key === "z" && event.shiftKey && redoAvailable) {
+        event.preventDefault();
+        dispatch(redo());
+      } else if (isMod && event.key === "y" && redoAvailable) {
+        event.preventDefault();
+        dispatch(redo());
+      } else if (isMod && event.key === "e") {
+        event.preventDefault();
+        setExportOpen((prev) => !prev);
+      }
+    },
+    [dispatch, undoAvailable, redoAvailable]
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
 
   useEffect(() => {
     const maxIndex = Math.max(0, qubitCount - 1);
@@ -61,12 +89,12 @@ export default function App() {
     noise.depolarizing,
     noise.amplitudeDamping,
     noise.phaseDamping,
-    focusQubit
+    focusQubit,
   ]);
 
   if (isEmbed) {
     return (
-      <div className="embed-shell">
+      <div className="embed-shell" role="application" aria-label="Bloch Sphere Embed">
         <main className="embed-main">
           <ReadoutPanel />
           <TimelineScrubber />
@@ -77,29 +105,57 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
+      {/* Skip link for keyboard navigation */}
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
+
+      <header className="app-header" role="banner">
         <h1>Bloch Sphere Workbench</h1>
-        <div className="header-actions">
-          <button disabled={!undoAvailable} onClick={() => dispatch(undo())}>
+        <nav className="header-actions" aria-label="Main actions">
+          <button
+            disabled={!undoAvailable}
+            onClick={() => dispatch(undo())}
+            aria-label="Undo last action"
+            data-tooltip="Undo (Ctrl+Z)"
+          >
             Undo
           </button>
-          <button disabled={!redoAvailable} onClick={() => dispatch(redo())}>
+          <button
+            disabled={!redoAvailable}
+            onClick={() => dispatch(redo())}
+            aria-label="Redo last undone action"
+            data-tooltip="Redo (Ctrl+Shift+Z)"
+          >
             Redo
           </button>
-          <button onClick={() => setExampleOpen(true)}>Examples</button>
-          <button onClick={() => setExportOpen(true)}>Export</button>
-        </div>
+          <button
+            onClick={() => setExampleOpen(true)}
+            aria-label="View example circuits"
+            aria-haspopup="dialog"
+          >
+            Examples
+          </button>
+          <button
+            onClick={() => setExportOpen(true)}
+            aria-label="Export circuit"
+            aria-haspopup="dialog"
+            data-tooltip="Export (Ctrl+E)"
+          >
+            Export
+          </button>
+        </nav>
       </header>
 
-      <div className="app-body">
-        <aside className="panel-left">
+      <div className="app-body" id="main-content">
+        <aside className="panel-left" aria-label="Gate palette">
           <CommandPalette />
         </aside>
-        <main className="panel-center">
+        <main className="panel-center" role="main" aria-label="Circuit editor">
           <CircuitCanvas />
           <TimelineScrubber />
         </main>
-        <aside className="panel-right">
+        <aside className="panel-right" aria-label="Readout panel">
           <ReadoutPanel />
         </aside>
       </div>

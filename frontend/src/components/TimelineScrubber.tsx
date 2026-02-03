@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useId } from "react";
 
 import { useAppDispatch, useAppSelector } from "../hooks/useRedux";
 import { setSelectedStep } from "../store/simulationSlice";
@@ -14,6 +14,7 @@ export function TimelineScrubber() {
   const simulation = useAppSelector((state) => state.simulation);
   const selected = simulation.selectedStep ?? simulation.snapshots.length - 1;
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const headingId = useId();
 
   const items = useMemo<TimelineItem[]>(() => {
     if (!simulation.snapshots.length) {
@@ -26,7 +27,7 @@ export function TimelineScrubber() {
       return {
         step: snapshot.step,
         label: gate,
-        subtitle: target
+        subtitle: target,
       };
     });
   }, [simulation.snapshots]);
@@ -47,6 +48,7 @@ export function TimelineScrubber() {
             `button[data-step-index="${next}"]`
           );
           button?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+          button?.focus();
         }
       }
     };
@@ -55,24 +57,49 @@ export function TimelineScrubber() {
   }, [dispatch, items.length, simulation.selectedStep]);
 
   return (
-    <section className="timeline-scrubber">
+    <section
+      className="timeline-scrubber"
+      aria-labelledby={headingId}
+      role="region"
+    >
       <div className="timeline-header">
-        <h3>Timeline <span className="timeline-hint">(←/→)</span></h3>
-        <span className="timeline-meta">steps: {items.length}</span>
+        <h3 id={headingId}>
+          Timeline{" "}
+          <span className="timeline-hint">
+            (<kbd>←</kbd>/<kbd>→</kbd>)
+          </span>
+        </h3>
+        <span className="timeline-meta" aria-live="polite">
+          {items.length > 0 ? `Step ${selected + 1} of ${items.length}` : "No steps"}
+        </span>
       </div>
       {items.length === 0 ? (
-        <p className="placeholder">Timeline will appear once gates are added.</p>
+        <p className="placeholder" role="status">
+          Timeline will appear once gates are added.
+        </p>
       ) : (
-        <div className="timeline-track" ref={containerRef}>
+        <div
+          className="timeline-track"
+          ref={containerRef}
+          role="listbox"
+          aria-label="Simulation timeline steps"
+          aria-activedescendant={`timeline-step-${selected}`}
+        >
           {items.map((item, index) => (
             <button
               key={`${item.step}-${index}`}
+              id={`timeline-step-${index}`}
               type="button"
+              role="option"
               data-step-index={index}
               className={`timeline-step ${index === selected ? "active" : ""}`}
               onClick={() => dispatch(setSelectedStep(index))}
+              aria-selected={index === selected}
+              aria-label={`Step ${item.step}: ${item.label}${item.subtitle ? ` on ${item.subtitle}` : ""}`}
             >
-              <span className="timeline-pill-step">{item.step}</span>
+              <span className="timeline-pill-step" aria-hidden="true">
+                {item.step}
+              </span>
               <div className="timeline-text">
                 <span className="timeline-label">{item.label}</span>
                 {item.subtitle && <span className="timeline-subtitle">{item.subtitle}</span>}

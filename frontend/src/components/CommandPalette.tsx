@@ -1,54 +1,54 @@
-import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useState, useId, type DragEvent } from "react";
 
 import { AddGateCommand } from "../commands/AddGateCommand";
 import { SetQubitCountCommand } from "../commands/SetQubitCountCommand";
 import { executeCommand } from "../store/store";
 import { useAppDispatch, useAppSelector } from "../hooks/useRedux";
 
-const PALETTE: { category: string; gates: { label: string; name: string }[] }[] = [
+const PALETTE: { category: string; gates: { label: string; name: string; description: string }[] }[] = [
   {
     category: "Basic",
     gates: [
-      { label: "I", name: "I" },
-      { label: "X", name: "X" },
-      { label: "Y", name: "Y" },
-      { label: "Z", name: "Z" },
-      { label: "H", name: "H" }
-    ]
+      { label: "I", name: "I", description: "Identity gate - no operation" },
+      { label: "X", name: "X", description: "Pauli-X gate - bit flip" },
+      { label: "Y", name: "Y", description: "Pauli-Y gate - bit and phase flip" },
+      { label: "Z", name: "Z", description: "Pauli-Z gate - phase flip" },
+      { label: "H", name: "H", description: "Hadamard gate - superposition" },
+    ],
   },
   {
     category: "Rotations",
     gates: [
-      { label: "Rx", name: "RX" },
-      { label: "Ry", name: "RY" },
-      { label: "Rz", name: "RZ" },
-      { label: "Phase", name: "P" }
-    ]
+      { label: "Rx", name: "RX", description: "Rotation around X axis" },
+      { label: "Ry", name: "RY", description: "Rotation around Y axis" },
+      { label: "Rz", name: "RZ", description: "Rotation around Z axis" },
+      { label: "Phase", name: "P", description: "Phase rotation gate" },
+    ],
   },
   {
     category: "Controls",
     gates: [
-      { label: "CX", name: "CX" },
-      { label: "CZ", name: "CZ" }
-    ]
+      { label: "CX", name: "CX", description: "Controlled-X (CNOT) gate" },
+      { label: "CZ", name: "CZ", description: "Controlled-Z gate" },
+    ],
   },
   {
     category: "Noise",
     gates: [
-      { label: "Reset", name: "RESET" },
-      { label: "Depol", name: "DEPOLARIZING" },
-      { label: "AmpDamp", name: "AMP_DAMP" },
-      { label: "PhaseDamp", name: "PHASE_DAMP" }
-    ]
+      { label: "Reset", name: "RESET", description: "Reset qubit to |0⟩" },
+      { label: "Depol", name: "DEPOLARIZING", description: "Depolarizing noise channel" },
+      { label: "AmpDamp", name: "AMP_DAMP", description: "Amplitude damping noise" },
+      { label: "PhaseDamp", name: "PHASE_DAMP", description: "Phase damping noise" },
+    ],
   },
   {
     category: "Measurement",
     gates: [
-      { label: "MZ", name: "MEASURE_Z" },
-      { label: "MX", name: "MEASURE_X" },
-      { label: "MY", name: "MEASURE_Y" }
-    ]
-  }
+      { label: "MZ", name: "MEASURE_Z", description: "Measure in Z basis" },
+      { label: "MX", name: "MEASURE_X", description: "Measure in X basis" },
+      { label: "MY", name: "MEASURE_Y", description: "Measure in Y basis" },
+    ],
+  },
 ];
 
 const ROTATION_DEFAULTS: Record<string, number[]> = {
@@ -58,7 +58,7 @@ const ROTATION_DEFAULTS: Record<string, number[]> = {
   P: [Math.PI / 2],
   DEPOLARIZING: [0.1],
   AMP_DAMP: [0.1],
-  PHASE_DAMP: [0.1]
+  PHASE_DAMP: [0.1],
 };
 
 const CONTROL_GATES = new Set(["CX", "CZ"]);
@@ -68,6 +68,7 @@ export function CommandPalette() {
   const qubitCount = useAppSelector((state) => state.circuit.qubitCount);
   const [targetQubit, setTargetQubit] = useState(0);
   const [controlQubit, setControlQubit] = useState(0);
+  const headingId = useId();
 
   const clampedTarget = useMemo(() => {
     if (targetQubit < 0) return 0;
@@ -96,7 +97,7 @@ export function CommandPalette() {
       name,
       targets: [clampedTarget],
       controls: CONTROL_GATES.has(name) ? [controlIndex] : [],
-      parameters: params
+      parameters: params,
     };
     return payload;
   };
@@ -117,17 +118,18 @@ export function CommandPalette() {
   };
 
   return (
-    <div className="command-palette">
+    <div className="command-palette" role="region" aria-labelledby={headingId}>
       <div className="palette-header">
-        <h2>Gate Palette</h2>
-        <div className="target-group">
+        <h2 id={headingId}>Gate Palette</h2>
+        <div className="target-group" role="group" aria-label="Qubit configuration">
           <label className="target-input">
-            Qubits
+            <span>Qubits</span>
             <input
               type="number"
               min={1}
               max={8}
               value={qubitCount}
+              aria-label="Number of qubits"
               onChange={(event) => {
                 const next = Number(event.target.value);
                 if (Number.isFinite(next)) {
@@ -137,43 +139,49 @@ export function CommandPalette() {
             />
           </label>
           <label className="target-input">
-            Target q
+            <span>Target</span>
             <input
               type="number"
               min={0}
               max={Math.max(0, qubitCount - 1)}
               value={clampedTarget}
+              aria-label="Target qubit index"
               onChange={(event) => setTargetQubit(Number(event.target.value))}
             />
           </label>
           <label className="target-input">
-            Control q
+            <span>Control</span>
             <input
               type="number"
               min={0}
               max={Math.max(0, qubitCount - 1)}
               value={clampedControl}
+              aria-label="Control qubit index"
               onChange={(event) => setControlQubit(Number(event.target.value))}
             />
           </label>
         </div>
       </div>
       {PALETTE.map((section) => (
-        <div key={section.category} className="palette-section">
-          <h3>{section.category}</h3>
-          <div className="palette-grid">
+        <fieldset key={section.category} className="palette-section">
+          <legend>
+            <h3>{section.category}</h3>
+          </legend>
+          <div className="palette-grid" role="group" aria-label={`${section.category} gates`}>
             {section.gates.map((gate) => (
               <button
                 key={gate.name}
                 onClick={() => handleAdd(gate.name)}
                 draggable
                 onDragStart={(event) => handleDragStart(event, gate.name)}
+                aria-label={`Add ${gate.label} gate: ${gate.description}`}
+                data-tooltip={gate.description}
               >
                 {gate.label}
               </button>
             ))}
           </div>
-        </div>
+        </fieldset>
       ))}
     </div>
   );
