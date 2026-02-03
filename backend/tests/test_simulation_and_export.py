@@ -10,8 +10,8 @@ from app.adapters.repository_sqlite import SQLiteCircuitRepository
 from app.adapters.simulator_qiskit import QiskitSimulationAdapter
 from app.domain.models import BlochVector, Circuit, Gate, Snapshot
 from app.domain.noise import NoiseConfig
-from app.domain.services import SnapshotService
 from app.domain.ports import CircuitRepositoryPort, SimulationPort
+from app.domain.services import SnapshotService
 
 
 def _build_simple_circuit() -> Circuit:

@@ -7,9 +7,10 @@ from qiskit import QuantumCircuit
 from qiskit.quantum_info import DensityMatrix, Statevector, partial_trace
 from qiskit.quantum_info.operators.channel import Kraus
 
-from app.domain.models import BlochVector, Circuit, Gate, Snapshot
+from app.domain.models import BlochVector, Circuit, Snapshot
 from app.domain.noise import NoiseConfig
 from app.domain.ports import SimulationPort
+
 from .qiskit_common import apply_gate_to_circuit
 
 
@@ -91,7 +92,11 @@ class QiskitSimulationAdapter(SimulationPort):
                     metadata={
                         "gate": gate.name,
                         "targets": ",".join(str(t) for t in gate.targets),
-                        "controls": ",".join(str(c) for c in gate.controls) if gate.controls else "",
+                        "controls": (
+                            ",".join(str(c) for c in gate.controls)
+                            if gate.controls
+                            else ""
+                        ),
                     },
                 )
             )

@@ -67,6 +67,7 @@ export interface SavedCircuitResponse {
   name: string | null;
   circuit: CircuitDto;
   snapshots: SnapshotDto[];
+  focus_qubit?: number | null;
 }
 
 export interface ExportRequestDto extends SimulateRequestDto {

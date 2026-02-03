@@ -6,8 +6,8 @@ from typing import Dict, Hashable, Optional, Sequence, Tuple
 import numpy as np
 
 from .models import BlochVector, Circuit, MeasurementResult, Snapshot
-from .ports import CircuitRepositoryPort, ExportPort, SimulationPort
 from .noise import NoiseConfig
+from .ports import CircuitRepositoryPort, ExportPort, SimulationPort
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +174,9 @@ class SnapshotService:
             switches=switches,
         )
 
-    def _apply_noise(self, bloch: tuple[float, float, float], noise: NoiseConfig) -> tuple[float, float, float]:
+    def _apply_noise(
+        self, bloch: tuple[float, float, float], noise: NoiseConfig
+    ) -> tuple[float, float, float]:
         x, y, z = bloch
         # Depolarizing shrinks the Bloch radius uniformly.
         if noise.depolarizing:

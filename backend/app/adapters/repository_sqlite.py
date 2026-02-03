@@ -104,8 +104,10 @@ class SQLiteCircuitRepository(CircuitRepositoryPort):
                 }
             )
         query = (
-            "INSERT INTO circuits (id, name, qubit_count, global_phase, gates, snapshots, focus_qubit) "
-            "VALUES (:id, :name, :qubit_count, :global_phase, :gates, :snapshots, :focus_qubit)"
+            "INSERT INTO circuits "
+            "(id, name, qubit_count, global_phase, gates, snapshots, focus_qubit) "
+            "VALUES "
+            "(:id, :name, :qubit_count, :global_phase, :gates, :snapshots, :focus_qubit)"
         )
         await self._database.execute(
             query,
@@ -121,9 +123,12 @@ class SQLiteCircuitRepository(CircuitRepositoryPort):
         )
         return circuit_id
 
-    async def load(self, circuit_id: str) -> tuple[Circuit, Sequence[Snapshot], str | None, int | None]:
+    async def load(
+        self, circuit_id: str
+    ) -> tuple[Circuit, Sequence[Snapshot], str | None, int | None]:
         query = (
-            "SELECT name, qubit_count, global_phase, gates, snapshots, focus_qubit FROM circuits WHERE id = :id"
+            "SELECT name, qubit_count, global_phase, gates, snapshots, focus_qubit "
+            "FROM circuits WHERE id = :id"
         )
         row = await self._database.fetch_one(query, {"id": circuit_id})
         if row is None:
@@ -192,7 +197,10 @@ class SQLiteCircuitRepository(CircuitRepositoryPort):
         return circuit, snapshots, name, row["focus_qubit"]
 
     async def list(self) -> Sequence[CircuitSummary]:
-        query = "SELECT id, name, qubit_count, gates, updated_at FROM circuits ORDER BY updated_at DESC"
+        query = (
+            "SELECT id, name, qubit_count, gates, updated_at "
+            "FROM circuits ORDER BY updated_at DESC"
+        )
         rows = await self._database.fetch_all(query)
         summaries: list[CircuitSummary] = []
         for row in rows:

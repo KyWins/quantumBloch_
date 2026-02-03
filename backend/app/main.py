@@ -7,7 +7,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.adapters.api import circuits, snapshots
-from app.adapters.api.dependencies import connect_repository, disconnect_repository, get_snapshot_service
+from app.adapters.api.dependencies import (
+    connect_repository,
+    disconnect_repository,
+    get_snapshot_service,
+)
 from app.config import get_settings
 
 

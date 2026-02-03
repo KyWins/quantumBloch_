@@ -14,7 +14,12 @@ class InMemoryCircuitRepository(CircuitRepositoryPort):
     def __init__(self) -> None:
         self._store: Dict[str, Tuple[str | None, Circuit, Sequence[Snapshot], str]] = {}
 
-    async def save(self, circuit: Circuit, snapshots: Iterable[Snapshot], name: str | None = None) -> str:
+    async def save(
+        self,
+        circuit: Circuit,
+        snapshots: Iterable[Snapshot],
+        name: str | None = None,
+    ) -> str:
         circuit_id = uuid4().hex
         self._store[circuit_id] = (
             name,

@@ -6,17 +6,20 @@ from app.domain.models import Circuit, Gate
 from app.domain.noise import NoiseConfig
 from app.domain.services import SnapshotService
 
-from .dependencies import get_snapshot_service
-from ...schemas.simulate import SimulateRequest
-from ...schemas.measurement import MeasurementRequest, MeasurementResponse
-from ...schemas.snapshot import BlochSchema, SnapshotSchema
 from ...config import get_settings
+from ...schemas.measurement import MeasurementRequest, MeasurementResponse
+from ...schemas.simulate import SimulateRequest
+from ...schemas.snapshot import BlochSchema, SnapshotSchema
+from .dependencies import get_snapshot_service
 
 router = APIRouter(prefix="/circuits", tags=["circuits"])
 
 
 @router.post("/simulate", response_model=dict[str, list[SnapshotSchema]])
-async def simulate(payload: SimulateRequest, service: SnapshotService = Depends(get_snapshot_service)):
+async def simulate(
+    payload: SimulateRequest,
+    service: SnapshotService = Depends(get_snapshot_service),
+):
     circuit = Circuit(
         qubit_count=payload.circuit.qubit_count,
         global_phase=payload.circuit.global_phase,
@@ -61,7 +64,10 @@ async def simulate(payload: SimulateRequest, service: SnapshotService = Depends(
 
 
 @router.post("/measure", response_model=MeasurementResponse)
-async def measure(payload: MeasurementRequest, service: SnapshotService = Depends(get_snapshot_service)):
+async def measure(
+    payload: MeasurementRequest,
+    service: SnapshotService = Depends(get_snapshot_service),
+):
     settings = get_settings()
     if payload.shots > settings.max_shots:
         raise HTTPException(status_code=400, detail=f"shots must be <= {settings.max_shots}")

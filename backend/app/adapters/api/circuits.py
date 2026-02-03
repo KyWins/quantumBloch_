@@ -6,23 +6,29 @@ from app.domain.models import Circuit, Gate
 from app.domain.noise import NoiseConfig
 from app.domain.services import SnapshotService
 
-from .dependencies import get_repository, get_snapshot_service
 from ...schemas.circuit import CircuitSchema
+from ...schemas.export import ExportRequest, ExportResponse
 from ...schemas.persistence import (
     CircuitSummarySchema,
     SaveCircuitRequest,
     SaveCircuitResponse,
     SavedCircuitResponse,
 )
-from ...schemas.export import ExportRequest, ExportResponse
 from ...schemas.snapshot import BlochSchema, SnapshotSchema
+from .dependencies import get_repository, get_snapshot_service
 
 router = APIRouter(prefix="/circuits", tags=["circuits"])
 
 
 @router.post("/save", response_model=SaveCircuitResponse)
-async def save_circuit(payload: SaveCircuitRequest, service: SnapshotService = Depends(get_snapshot_service)):
-    circuit = Circuit(qubit_count=payload.circuit.qubit_count, global_phase=payload.circuit.global_phase)
+async def save_circuit(
+    payload: SaveCircuitRequest,
+    service: SnapshotService = Depends(get_snapshot_service),
+):
+    circuit = Circuit(
+        qubit_count=payload.circuit.qubit_count,
+        global_phase=payload.circuit.global_phase,
+    )
     for gate in payload.circuit.gates:
         circuit.append(
             Gate(
@@ -101,7 +107,10 @@ async def load_circuit(circuit_id: str, service: SnapshotService = Depends(get_s
 
 
 @router.post("/export", response_model=ExportResponse)
-async def export_circuit(payload: ExportRequest, service: SnapshotService = Depends(get_snapshot_service)):
+async def export_circuit(
+    payload: ExportRequest,
+    service: SnapshotService = Depends(get_snapshot_service),
+):
     circuit = Circuit(
         qubit_count=payload.circuit.qubit_count,
         global_phase=payload.circuit.global_phase,
